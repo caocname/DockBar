@@ -34,12 +34,26 @@ internal sealed class IconPickerWindow : Window
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
         Background = System.Windows.Media.Brushes.Transparent;
-        Foreground = (Brush)Application.Current.FindResource("Foreground");
-        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: host.Config.DarkMode);
+        var dark = host.Config.DarkMode;
+        var fgKey = dark ? "Foreground" : "ForegroundLight";
+        var fgDimKey = dark ? "ForegroundDim" : "ForegroundDimLight";
+        var surfaceKey = dark ? "DialogSurfaceDark" : "DialogSurfaceLight";
+        var fg = (Brush)Application.Current.FindResource(fgKey);
+        var fgDim = (Brush)Application.Current.FindResource(fgDimKey);
+        Foreground = fg;
+        // 浅色模式:覆盖 GhostButtonStyle / TabButton 等通过 DynamicResource 引用的 brush key,
+        // 让按钮文字、悬停色全部切到浅色版本。深色就保持 App 资源默认值,什么都不用动。
+        if (!dark)
+        {
+            Resources["Foreground"]    = fg;
+            Resources["ForegroundDim"] = fgDim;
+            Resources["SurfaceHover"]  = (Brush)Application.Current.FindResource("SurfaceHoverLight");
+        }
+        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: dark);
 
         var outer = new Border
         {
-            Background = (Brush)Application.Current.FindResource("AcrylicTint"),
+            Background = (Brush)Application.Current.FindResource(surfaceKey),
             CornerRadius = new CornerRadius(12),
         };
         var root = new DockPanel { Margin = new Thickness(16) };
@@ -52,7 +66,7 @@ internal sealed class IconPickerWindow : Window
         {
             Text = $"管理「{target.Name}」分类",
             FontSize = 14, FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.FindResource("Foreground"),
+            Foreground = fg,
             VerticalAlignment = VerticalAlignment.Center,
         };
         DockPanel.SetDock(title, Dock.Left);
@@ -70,7 +84,7 @@ internal sealed class IconPickerWindow : Window
         {
             Text = "勾选要放进本分类的图标,取消勾选则从本分类移除。\n一个图标同一时刻只属于一个分类。",
             Margin = new Thickness(0, 0, 0, 8),
-            Foreground = (Brush)Application.Current.FindResource("ForegroundDim"),
+            Foreground = fgDim,
             TextWrapping = TextWrapping.Wrap,
         };
         DockPanel.SetDock(hint, Dock.Top);
@@ -115,12 +129,12 @@ internal sealed class IconPickerWindow : Window
         sv.Content = list;
         root.Children.Add(sv);
 
-        BuildRows(list);
+        BuildRows(list, fg, fgDim);
 
         Content = outer;
     }
 
-    private void BuildRows(StackPanel list)
+    private void BuildRows(StackPanel list, Brush fg, Brush fgDim)
     {
         var cfg = _host.Config;
         var all = _host.Binder.Scan();
@@ -139,6 +153,7 @@ internal sealed class IconPickerWindow : Window
                 IsChecked = owner == _target,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 0),
+                Foreground = fg,
             };
             var img = new Image
             {
@@ -151,13 +166,13 @@ internal sealed class IconPickerWindow : Window
             {
                 Text = item.DisplayName,
                 VerticalAlignment = VerticalAlignment.Center,
-                Foreground = (Brush)Application.Current.FindResource("Foreground"),
+                Foreground = fg,
             };
             // 归属角标
             var ownerTag = new TextBlock
             {
                 Text = owner is null ? "(未分类)" : owner == _target ? "" : $"现属于「{owner.Name}」",
-                Foreground = (Brush)Application.Current.FindResource("ForegroundDim"),
+                Foreground = fgDim,
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(8, 0, 0, 0),
@@ -185,7 +200,7 @@ internal sealed class IconPickerWindow : Window
             list.Children.Add(new TextBlock
             {
                 Text = "绑定文件夹里还没有任何 .lnk / .exe。\n把快捷方式或可执行文件放进去再回来。",
-                Foreground = (Brush)Application.Current.FindResource("ForegroundDim"),
+                Foreground = fgDim,
                 Margin = new Thickness(8, 16, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
             });

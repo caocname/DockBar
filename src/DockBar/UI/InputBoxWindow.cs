@@ -24,13 +24,23 @@ public sealed class InputBoxWindow : Window
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
         Background = System.Windows.Media.Brushes.Transparent;
-        Foreground = (Brush)Application.Current.FindResource("Foreground");
+        var dark = DockBar.Services.AppHost.Current?.Config.DarkMode ?? true;
+        var fg = (Brush)Application.Current.FindResource(dark ? "Foreground" : "ForegroundLight");
+        var fgDim = (Brush)Application.Current.FindResource(dark ? "ForegroundDim" : "ForegroundDimLight");
+        var surface = (Brush)Application.Current.FindResource(dark ? "DialogSurfaceDark" : "DialogSurfaceLight");
+        Foreground = fg;
+        if (!dark)
+        {
+            Resources["Foreground"]    = fg;
+            Resources["ForegroundDim"] = fgDim;
+            Resources["SurfaceHover"]  = (Brush)Application.Current.FindResource("SurfaceHoverLight");
+        }
         ResizeMode = ResizeMode.NoResize;
-        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: true);
+        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: dark);
 
         var outer = new Border
         {
-            Background = (Brush)Application.Current.FindResource("AcrylicTint"),
+            Background = surface,
             CornerRadius = new CornerRadius(12),
         };
         var sp = new StackPanel { Margin = new Thickness(20) };
@@ -41,7 +51,7 @@ public sealed class InputBoxWindow : Window
         {
             Text = title,
             FontSize = 14, FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.FindResource("Foreground"),
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 10),
         };
         sp.Children.Add(titleTb);
@@ -49,10 +59,10 @@ public sealed class InputBoxWindow : Window
         sp.Children.Add(new TextBlock
         {
             Text = prompt,
-            Foreground = (Brush)Application.Current.FindResource("ForegroundDim"),
+            Foreground = fgDim,
             Margin = new Thickness(0, 0, 0, 8),
         });
-        _tb = new TextBox { Text = initial };
+        _tb = new TextBox { Text = initial, Foreground = fg };
         sp.Children.Add(_tb);
         var btnRow = new StackPanel { Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };

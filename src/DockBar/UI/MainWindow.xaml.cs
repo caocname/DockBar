@@ -26,11 +26,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         SourceInitialized += OnSourceInitialized;
-        Loaded += (_, _) => ApplyAcrylicMica();
         MouseLeave += OnMouseLeave;
         MouseEnter += (_, _) => _hideTimer.Stop();
-        Drop += OnFilesDropped;
-        DragOver += (_, e) => { e.Effects = DragDropEffects.Copy; e.Handled = true; };
+        // 用 Preview 隧道事件,从 Window 顶层拦截,确保子元素(透明背景区域)不会吃掉拖拽
+        PreviewDragEnter += OnDragEnterAny;
+        PreviewDragOver  += OnDragEnterAny;
+        PreviewDrop      += OnFilesDropped;
         IsVisibleChanged += (_, e) =>
         {
             // 隐藏后释放工作集回 OS,任务管理器看到的内存大幅下降
@@ -56,31 +57,38 @@ public partial class MainWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        // 放行 Shell 的拖放消息,避开 UIPI 过滤(WM_DROPFILES / WM_COPYDATA / WM_COPYGLOBALDATA)。
+        // 没有这一步,从某些进程拖文件过来 OLE Drop 可能不触发。
+        ChangeWindowMessageFilterEx(hwnd, WM_DROPFILES,      MSGFLT_ALLOW, IntPtr.Zero);
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA,       MSGFLT_ALLOW, IntPtr.Zero);
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, IntPtr.Zero);
         // SourceInitialized 时 HWND 已就绪,可以贴亚克力
         ApplyTheme();
     }
 
     /// <summary>
-    /// 把当前 DarkMode/Acrylic 配置应用到本窗口。
-    /// 改主题后调用一次就行,不需要重建子控件。
+    /// 主题切换:重新指向当前主题的色板。
+    /// 主窗口已不用 AllowsTransparency + 亚克力(为修复内部拖拽漏到桌面的问题),
+    /// 只切色板就够了;窗口本身的 Background 也按主题刷新。
     /// </summary>
     public void ApplyTheme()
     {
         var cfg = AppHost.Current!.Config;
-        if (cfg.UseAcrylic)
-            WindowEffects.ApplyAcrylic(this, dark: cfg.DarkMode);
-        else
-            WindowEffects.ApplyBlur(this, dark: cfg.DarkMode, tintAlpha: 0xAA);
 
         // 文字/边框资源重新指向当前主题
         Resources["DynamicForeground"]    = (Brush)FindResource(cfg.DarkMode ? "Foreground" : "ForegroundLight");
         Resources["DynamicForegroundDim"] = (Brush)FindResource(cfg.DarkMode ? "ForegroundDim" : "ForegroundDimLight");
         Resources["DynamicHover"]         = (Brush)FindResource(cfg.DarkMode ? "SurfaceHover" : "SurfaceHoverLight");
+
+        // 整窗背景:暗色 = 深灰,亮色 = 浅灰。实色,不再走亚克力。
+        Background = new SolidColorBrush(cfg.DarkMode
+            ? Color.FromRgb(0x1F, 0x1F, 0x1F)
+            : Color.FromRgb(0xF5, 0xF5, 0xF5));
     }
 
     private void ApplyAcrylicMica()
     {
-        // 留空兼容老调用;真正的亚克力在 OnSourceInitialized 里贴
+        // 留空兼容老调用;主窗口不再用亚克力
     }
 
     public void ApplyDock()
@@ -177,29 +185,79 @@ public partial class MainWindow : Window
     public bool IsSuppressingHide_PublicCheck() => _suppressMouseLeave;
 
     // ----- 拖入文件:复制到绑定文件夹,只接受 lnk/exe -----
+
+    /// <summary>
+    /// 顶层拦截 DragEnter/DragOver。区分两种来源:
+    ///  ① 外部资源管理器/桌面拖文件进来 → DataFormats.FileDrop,给 Move effect 表示接收;
+    ///  ② 内部图标拖拽(DRAG_FORMAT) → 这里不动,留给 Border/Tab 自己的 Drop handler 决定排序/换分类。
+    /// 不识别的格式给 None,光标会变禁止符,提示用户。
+    /// </summary>
+    private void OnDragEnterAny(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+        else if (e.Data.GetDataPresent(DRAG_FORMAT))
+        {
+            // 内部拖拽:默认 Move,具体由更内层的 Drop handler 接管
+            e.Effects = DragDropEffects.Move;
+            // 不 Handled,让事件继续冒泡到 Border/Tab
+        }
+    }
+
     private void OnFilesDropped(object sender, DragEventArgs e)
     {
+        // 内部拖拽不在这里处理(每个 Border/Tab 自己有 Drop handler 并 Handled=true)
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Handled = true;
         var paths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+        AcceptFiles(paths);
+    }
+
+    /// <summary>
+    /// 把外部拖入的文件路径列表落到绑定文件夹 + 当前分类。
+    /// 同时给 TriggerWindow 上松手的拖放转发用。
+    /// 行为:Move(把源头搬过来),复制不会给用户两份。
+    /// </summary>
+    public void AcceptFiles(string[] paths)
+    {
         var cfg = AppHost.Current!.Config;
         if (string.IsNullOrEmpty(cfg.FolderPath) || !Directory.Exists(cfg.FolderPath))
         {
             MessageBox.Show("请先在「设置」中绑定收纳文件夹。", "DockBar");
             return;
         }
+        bool any = false;
         foreach (var p in paths.Where(FolderBinder.IsApp))
         {
             try
             {
                 var dst = Path.Combine(cfg.FolderPath!, Path.GetFileName(p));
-                if (!File.Exists(dst)) File.Copy(p, dst);
+                // 同盘 → File.Move 直接搬;跨盘 → Move 也支持(内部会 Copy+Delete)
+                // 已存在同名 → 当作「已经收过」,把源头删掉避免桌面残留
+                if (string.Equals(Path.GetFullPath(p), Path.GetFullPath(dst), StringComparison.OrdinalIgnoreCase))
+                {
+                    // 源就是目标(用户从绑定文件夹本身拖回来),啥也不做
+                }
+                else if (File.Exists(dst))
+                {
+                    try { File.Delete(p); } catch { /* 删不掉就算了,核心需求是窗口里能看到 */ }
+                }
+                else
+                {
+                    File.Move(p, dst);
+                }
                 // 把它分配到当前分类
                 var current = GetOrCreateCurrentCategory();
                 if (!current.Files.Contains(Path.GetFileName(dst)))
                     current.Files.Add(Path.GetFileName(dst));
+                any = true;
             }
             catch { /* 忽略 */ }
         }
+        if (!any) return;
         AppHost.Current!.SaveConfig();
         RefreshItems();
     }
@@ -339,10 +397,13 @@ public partial class MainWindow : Window
 
     private static void OnTabDragOver(System.Windows.DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(DRAG_FORMAT)
-            ? DragDropEffects.Move
-            : DragDropEffects.None;
-        e.Handled = true;
+        if (e.Data.GetDataPresent(DRAG_FORMAT))
+        {
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+        // 外部 FileDrop 不要在这里 Handled,让它冒泡到顶层 PreviewDrop;
+        // 这样从桌面把文件直接拖到分类标签上也能落到「绑定文件夹 + 当前分类」
     }
 
     private void OnTabDrop(System.Windows.DragEventArgs e, CategoryConfig target)
@@ -360,6 +421,35 @@ public partial class MainWindow : Window
         foreach (var c in cfg.Categories)
             c.Files.RemoveAll(f => f.Equals(fileName, StringComparison.OrdinalIgnoreCase));
         if (!target.Files.Contains(fileName)) target.Files.Add(fileName);
+        AppHost.Current!.SaveConfig();
+        RefreshItems();
+    }
+
+    /// <summary>
+    /// 把 fileName 在「当前分类」内挪到 targetFileName 的前/后。
+    /// 同分类排序用,不跨分类。
+    /// </summary>
+    private void ReorderInCurrent(string fileName, string targetFileName, bool insertAfter)
+    {
+        if (string.Equals(fileName, targetFileName, StringComparison.OrdinalIgnoreCase)) return;
+        var cur = GetOrCreateCurrentCategory();
+        // 用大小写不敏感比较找索引
+        int srcIdx = cur.Files.FindIndex(f => f.Equals(fileName,       StringComparison.OrdinalIgnoreCase));
+        if (srcIdx < 0)
+        {
+            // 跨分类拖到图标上 = 先挪过来再排序
+            foreach (var c in AppHost.Current!.Config.Categories)
+                c.Files.RemoveAll(f => f.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+            cur.Files.Add(fileName);
+            srcIdx = cur.Files.Count - 1;
+        }
+        var item = cur.Files[srcIdx];
+        cur.Files.RemoveAt(srcIdx);
+        int tgtIdx = cur.Files.FindIndex(f => f.Equals(targetFileName, StringComparison.OrdinalIgnoreCase));
+        if (tgtIdx < 0) tgtIdx = cur.Files.Count;
+        if (insertAfter) tgtIdx++;
+        if (tgtIdx > cur.Files.Count) tgtIdx = cur.Files.Count;
+        cur.Files.Insert(tgtIdx, item);
         AppHost.Current!.SaveConfig();
         RefreshItems();
     }
@@ -444,6 +534,8 @@ public partial class MainWindow : Window
             Child = stack,
             Tag = item,
             ToolTip = item.DisplayName,
+            // 让本图标也能做 drop target,实现「拖到图标上 = 在它前/后插入」
+            AllowDrop = true,
         };
         border.MouseEnter += (_, _) => border.Background = Hover();
         border.MouseLeave += (_, _) => border.Background = Brushes.Transparent;
@@ -471,7 +563,14 @@ public partial class MainWindow : Window
             finally { _suppressMouseLeave = false; }
             e.Handled = true;
         };
-        // 按住左键拖动 → 自定义格式,只有标签会接(避免被资源管理器接走)
+        // 按住左键拖动 → 只塞 DRAG_FORMAT 这一种自定义格式。
+        // 关键:不要再塞 DataFormats.FileDrop。否则会有两个连锁灾难:
+        //  ① 光标稍微滑出窗口边缘,桌面/资源管理器看到 FileDrop 直接把文件 Move 走 → 图标飞到桌面;
+        //  ② 即使在窗口内松手,顶层 PreviewDrop 走 tunneling 比 Border.Drop 先到,
+        //     OnFilesDropped 看到 FileDrop 就 Handled=true 把事件吃掉,内部排序根本轮不到执行。
+        // 内部拖拽只在窗口里有意义(换分类 / 排序),不需要让外部目标识别。
+        // 后续如果要实现「拖到桌面 = 把文件搬出去」,应加一个明确的辅助键(如按住 Alt)再附加 FileDrop,
+        // 默认形态保持现在这样最安全。
         System.Windows.Point startPt = default;
         border.PreviewMouseLeftButtonDown += (_, e) => startPt = e.GetPosition(this);
         border.PreviewMouseMove += (_, e) =>
@@ -481,9 +580,45 @@ public partial class MainWindow : Window
             // 拖出 6px 才认作拖拽,否则当点击
             if (Math.Abs(p.X - startPt.X) < 6 && Math.Abs(p.Y - startPt.Y) < 6) return;
             var data = new System.Windows.DataObject(DRAG_FORMAT, item.FileName);
-            DragDrop.DoDragDrop(border, data, DragDropEffects.Move);
+            // 拖拽期间禁止隐藏。结束后让 250ms tick 用真坐标决定要不要缩
+            _suppressMouseLeave = true;
+            _hideTimer.Stop();
+            try
+            {
+                DragDrop.DoDragDrop(border, data, DragDropEffects.Move);
+            }
+            finally
+            {
+                _suppressMouseLeave = false;
+            }
         };
+        // 同分类内排序:把别的图标拖到我身上 = 在我前/后插入
+        border.DragEnter += (_, e) => OnIconDragOver(e);
+        border.DragOver  += (_, e) => OnIconDragOver(e);
+        border.Drop      += (_, e) => OnIconDrop(e, item, border);
         return border;
+    }
+
+    /// <summary>同分类内排序:只接受内部图标拖拽,外部 FileDrop 留给顶层 PreviewDrop 处理。</summary>
+    private static void OnIconDragOver(System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DRAG_FORMAT))
+        {
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+        // 不是内部格式就不 Handled,让 FileDrop 冒泡到顶层 PreviewDrop
+    }
+
+    private void OnIconDrop(System.Windows.DragEventArgs e, AppItem target, FrameworkElement targetElem)
+    {
+        if (!e.Data.GetDataPresent(DRAG_FORMAT)) return;
+        var fn = (string)e.Data.GetData(DRAG_FORMAT);
+        // 鼠标落点在 target 中点之前 → 插到 target 之前;之后 → 插到 target 之后
+        var pos = e.GetPosition(targetElem);
+        bool after = pos.X > targetElem.RenderSize.Width / 2;
+        ReorderInCurrent(fn, target.FileName, after);
+        e.Handled = true;
     }
 }
 

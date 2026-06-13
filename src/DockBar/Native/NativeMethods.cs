@@ -152,4 +152,22 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern int GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    // ---- UIPI: 让低完整性进程的 OLE 拖放消息能进入本窗口 ----
+    // Win Vista+ 起,Explorer/桌面以中等完整性运行,本进程也是中等;但有些第三方启动器 / 某些
+    // 配置会把消息过滤掉。显式 Allow 这几个消息可以让来自 Shell 的拖拽消息畅通。
+    public const uint MSGFLT_ALLOW = 1;
+    public const uint WM_DROPFILES = 0x0233;
+    public const uint WM_COPYDATA = 0x004A;
+    public const uint WM_COPYGLOBALDATA = 0x0049; // 未公开,但 Raymond Chen 提过
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct CHANGEFILTERSTRUCT
+    {
+        public uint cbSize;
+        public uint ExtStatus;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool ChangeWindowMessageFilterEx(IntPtr hwnd, uint message, uint action, IntPtr pChangeFilterStruct);
 }

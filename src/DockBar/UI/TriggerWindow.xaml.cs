@@ -24,10 +24,18 @@ public partial class TriggerWindow : Window
         DragEnter += (_, e) =>
         {
             if (!_suppressed) AppHost.Current?.ShowMain();
-            e.Effects = DragDropEffects.Copy;
+            e.Effects = DragDropEffects.Move;
             e.Handled = true;
         };
-        DragOver += (_, e) => { e.Effects = DragDropEffects.Copy; e.Handled = true; };
+        DragOver += (_, e) => { e.Effects = DragDropEffects.Move; e.Handled = true; };
+        // 用户也可能直接在触发条上松手 → 转给主窗口处理
+        Drop += (_, e) =>
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+            var paths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+            AppHost.Current?.OnFilesDroppedExternal(paths);
+            e.Handled = true;
+        };
         // 拖拽改停靠位置 + 中间长按
         MouseLeftButtonDown += OnDragStart;
     }
@@ -38,6 +46,10 @@ public partial class TriggerWindow : Window
         // 不要出现在任务栏/Alt+Tab,不要抢焦点
         var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        // 同主窗口:放行 Shell 拖放消息
+        ChangeWindowMessageFilterEx(hwnd, WM_DROPFILES,      MSGFLT_ALLOW, IntPtr.Zero);
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA,       MSGFLT_ALLOW, IntPtr.Zero);
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, IntPtr.Zero);
         WindowEffects.ApplyBlur(this);
     }
 

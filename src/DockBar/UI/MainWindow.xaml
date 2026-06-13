@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="DockBar"
         WindowStyle="None"
-        AllowsTransparency="True"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         Topmost="True"
@@ -11,15 +10,26 @@
         AllowDrop="True"
         SnapsToDevicePixels="True"
         UseLayoutRounding="True"
-        Background="Transparent"
+        Background="#1F1F1F"
         Visibility="Collapsed">
+    <!--
+        AllowsTransparency 已经去掉 = 不再用 WPF Layered Window。
+        原因:开 AllowsTransparency=True + 亚克力时,WPF 的 OLE 命中测试在透明像素上不可靠,
+        窗口里拖图标会漏到下层桌面 HWND 直接被桌面接走 → 文件被搬到桌面。
+        换成实心 Background 后 OLE 拖拽路径稳定,图标排序 / 跨分类 / 拖出窗口的边界判定都精确。
+        副作用:不再有亚克力毛玻璃,窗口圆角会被矩形 HWND 切成直角,功能优先。
+    -->
+    <!-- AllowDrop 顺着可视树一路开,确保鼠标无论落在 Border/DockPanel/Tabs/ScrollViewer/Items/WrapPanel
+         哪一层,WPF 都能找到 OLE drop target,顶层 PreviewDrag* 才能触发。
+         漏掉任何一层都会出现「拖到这片区域光标变禁止符」的死角。 -->
     <Border x:Name="Root"
             Background="Transparent"
-            CornerRadius="12"
-            Padding="10">
-        <DockPanel x:Name="Panel" LastChildFill="True">
+            CornerRadius="0"
+            Padding="10"
+            AllowDrop="True">
+        <DockPanel x:Name="Panel" LastChildFill="True" AllowDrop="True">
             <!-- 分类标签:横向 WrapPanel,超出自动换行;不要竖排 -->
-            <ItemsControl x:Name="Tabs" DockPanel.Dock="Top" Margin="0,0,0,8">
+            <ItemsControl x:Name="Tabs" DockPanel.Dock="Top" Margin="0,0,0,8" AllowDrop="True">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel Orientation="Horizontal"/>
@@ -28,11 +38,12 @@
             </ItemsControl>
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
-                          Style="{StaticResource ThinScrollViewer}">
-                <ItemsControl x:Name="Items">
+                          Style="{StaticResource ThinScrollViewer}"
+                          AllowDrop="True">
+                <ItemsControl x:Name="Items" AllowDrop="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel/>
+                            <WrapPanel AllowDrop="True"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

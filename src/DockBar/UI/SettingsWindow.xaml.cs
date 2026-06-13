@@ -15,7 +15,23 @@ public partial class SettingsWindow : Window
     {
         _ctx = ctx;
         InitializeComponent();
-        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: ctx.Config.DarkMode);
+        // 根据当前主题选实色卡片底 + 文字色
+        var dark = ctx.Config.DarkMode;
+        OuterBorder.Background = (System.Windows.Media.Brush)
+            Application.Current.FindResource(dark ? "DialogSurfaceDark" : "DialogSurfaceLight");
+        Foreground = (System.Windows.Media.Brush)
+            Application.Current.FindResource(dark ? "Foreground" : "ForegroundLight");
+        if (!dark)
+        {
+            // 让 GhostButton/AccentButton/TextBox 等通过 DynamicResource 引用的 brush 切到浅色版本
+            var fgLight = (System.Windows.Media.Brush)Application.Current.FindResource("ForegroundLight");
+            var fgDimLight = (System.Windows.Media.Brush)Application.Current.FindResource("ForegroundDimLight");
+            var hoverLight = (System.Windows.Media.Brush)Application.Current.FindResource("SurfaceHoverLight");
+            Resources["Foreground"]    = fgLight;
+            Resources["ForegroundDim"] = fgDimLight;
+            Resources["SurfaceHover"]  = hoverLight;
+        }
+        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: dark);
         LoadFromConfig();
         BrowseBtn.Click += (_, _) =>
         {

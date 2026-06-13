@@ -11,6 +11,10 @@
     <SolidColorBrush x:Key="AcrylicTint"      Color="#00000000"/>
     <SolidColorBrush x:Key="AcrylicTintLight" Color="#00FFFFFF"/>
 
+    <!-- 对话框(设置/管理图标/输入框)用的实色卡片底,确保任何桌面背景下文字都可读 -->
+    <SolidColorBrush x:Key="DialogSurfaceDark"  Color="#F22A2A2A"/>
+    <SolidColorBrush x:Key="DialogSurfaceLight" Color="#F2F5F5F5"/>
+
     <SolidColorBrush x:Key="Surface"          Color="#E61F1F1F"/>
     <SolidColorBrush x:Key="SurfaceTrigger"   Color="#80606060"/>
     <SolidColorBrush x:Key="SurfaceHover"     Color="#22FFFFFF"/>
@@ -29,10 +33,12 @@
     <SolidColorBrush x:Key="ItemHover"        Color="#1FFFFFFF"/>
     <SolidColorBrush x:Key="Stroke"           Color="#22FFFFFF"/>
 
-    <!-- ===== 分类标签按钮 ===== -->
+    <!-- ===== 分类标签按钮 =====
+         Foreground / Hover 用 DynamicResource:对话框可在 Window.Resources 里覆盖
+         ForegroundDim/Foreground/SurfaceHover 切到浅色版本,而不需要重写 Style。 -->
     <Style x:Key="TabButtonStyle" TargetType="ToggleButton">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource ForegroundDim}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDim}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="12,5"/>
         <Setter Property="FontSize" Value="12"/>
@@ -47,17 +53,17 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <!-- 选中态下方小圆点 -->
-                        <Rectangle x:Name="Indicator" Fill="{StaticResource Accent}"
+                        <Rectangle x:Name="Indicator" Fill="{DynamicResource Accent}"
                                    Height="2" Width="14" RadiusX="1" RadiusY="1"
                                    VerticalAlignment="Bottom" HorizontalAlignment="Center"
                                    Margin="0,0,0,1" Visibility="Collapsed"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceHover}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHover}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Foreground}"/>
                             <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -69,7 +75,7 @@
     <!-- ===== 圆角无边框按钮 ===== -->
     <Style x:Key="GhostButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource ForegroundDim}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDim}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="10,4"/>
         <Setter Property="FontSize" Value="12"/>
@@ -83,11 +89,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceHover}"/>
-                            <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Foreground}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfacePress}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfacePress}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -121,12 +127,11 @@
         </Setter>
     </Style>
 
-    <!-- ===== 文本框 ===== -->
+    <!-- ===== 文本框:Foreground 不写死,继承 -->
     <Style TargetType="TextBox">
         <Setter Property="Background" Value="#22000000"/>
-        <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
-        <Setter Property="CaretBrush" Value="{StaticResource Foreground}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Stroke}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource Foreground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Stroke}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="8,5"/>
         <Setter Property="FontSize" Value="12"/>
@@ -144,17 +149,14 @@
         </Setter>
     </Style>
 
-    <!-- ===== CheckBox ===== -->
+    <!-- ===== CheckBox / RadioButton:不写死前景色,继承所在窗口的 Foreground -->
     <Style TargetType="CheckBox">
-        <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
     </Style>
 
-    <!-- ===== RadioButton ===== -->
     <Style TargetType="RadioButton">
-        <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
     </Style>
@@ -213,9 +215,9 @@
 
     <!-- ===== ContextMenu (我们自己用的菜单,与 Shell 原生菜单不冲突) ===== -->
     <Style TargetType="ContextMenu">
-        <Setter Property="Background" Value="{StaticResource Surface}"/>
-        <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Stroke}"/>
+        <Setter Property="Background" Value="{DynamicResource Surface}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Foreground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Stroke}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
