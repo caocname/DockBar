@@ -1,0 +1,26 @@
+<Window x:Class="DockBar.UI.TriggerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DockBar Trigger"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Transparent"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        ShowActivated="False"
+        AllowDrop="True"
+        Focusable="False">
+    <Border x:Name="Bar"
+            Background="{StaticResource SurfaceTrigger}"
+            CornerRadius="3">
+        <Grid>
+            <!-- 中间一条小条做视觉提示 -->
+            <Rectangle Fill="{StaticResource Accent}" Opacity="0.7" Width="40" Height="2"
+                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                       x:Name="Hint"/>
+        </Grid>
+    </Border>
+</Window>

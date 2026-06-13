@@ -1,0 +1,38 @@
+# ---- .NET / VS / Rider ----
+bin/
+obj/
+publish/
+out/
+[Dd]ebug/
+[Rr]elease/
+[Xx]64/
+[Xx]86/
+[Bb]uild/
+[Bb]uilds/
+*.user
+*.suo
+*.userprefs
+*.cache
+*.tmp
+*.tmp_proj
+*.log
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# ---- DockBar 自身产物 ----
+config.json
+*.lnk
+DockBar.exe
+DockBar.pdb
+logo.png
+
+# ---- OS ----
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- 单文件发布临时目录 ----
+*.zip
+*.7z

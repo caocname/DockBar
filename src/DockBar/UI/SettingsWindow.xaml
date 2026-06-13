@@ -1,0 +1,58 @@
+<Window x:Class="DockBar.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DockBar 设置"
+        Width="480" SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Foreground="{StaticResource Foreground}"
+        ResizeMode="NoResize">
+    <Border CornerRadius="12" Padding="0" Background="{StaticResource AcrylicTint}">
+    <StackPanel Margin="20">
+        <TextBlock Text="收纳文件夹" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="FolderBox" Grid.Column="0" IsReadOnly="True"/>
+            <Button x:Name="BrowseBtn" Grid.Column="1" Content="浏览..." Margin="8,0,0,0" Padding="12,4"/>
+        </Grid>
+
+        <TextBlock Text="停靠位置" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <RadioButton x:Name="DockTop"   Content="顶部" Margin="0,0,12,0" Foreground="{StaticResource Foreground}"/>
+            <RadioButton x:Name="DockLeft"  Content="左侧" Margin="0,0,12,0" Foreground="{StaticResource Foreground}"/>
+            <RadioButton x:Name="DockRight" Content="右侧" Foreground="{StaticResource Foreground}"/>
+        </StackPanel>
+
+        <TextBlock Text="缩回模式" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <RadioButton x:Name="HideMouseLeave" Content="鼠标离开延时缩回" Margin="0,0,12,0" Foreground="{StaticResource Foreground}"/>
+            <RadioButton x:Name="HideOnLaunch"   Content="启动后立即缩回"     Foreground="{StaticResource Foreground}"/>
+        </StackPanel>
+
+        <TextBlock Text="缩回延时(毫秒)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBox x:Name="DelayBox" Margin="0,0,0,12"/>
+
+        <TextBlock Text="图标尺寸(像素)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <Slider x:Name="IconSlider" Minimum="32" Maximum="96" TickFrequency="8"
+                IsSnapToTickEnabled="True" Margin="0,0,0,12"/>
+
+        <CheckBox x:Name="AcrylicChk" Content="毛玻璃 / Mica 效果"
+                  Foreground="{StaticResource Foreground}" Margin="0,0,0,8"/>
+        <CheckBox x:Name="DarkChk" Content="暗色模式"
+                  Foreground="{StaticResource Foreground}" Margin="0,0,0,8"/>
+        <CheckBox x:Name="AutoChk" Content="开机自启"
+                  Foreground="{StaticResource Foreground}" Margin="0,0,0,16"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="CancelBtn" Content="取消" Width="80" Margin="0,0,8,0" IsCancel="True"/>
+            <Button x:Name="SaveBtn"   Content="保存"  Width="80" IsDefault="True"
+                    Style="{StaticResource AccentButtonStyle}"/>
+        </StackPanel>
+    </StackPanel>
+    </Border>
+</Window>
