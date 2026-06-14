@@ -1,5 +1,16 @@
 // 全局 using 别名:消除 WPF / WinForms / System.Drawing 之间的同名歧义。
 // 我们用 WPF 做 UI,WinForms 只用 NotifyIcon。所有重名一律默认 → WPF/Input。
+//
+// ImplicitUsings 在 net48 上关掉了(SDK 默认就关),所以这里把常用 BCL ns 也手动 global 一下,
+// 各个 .cs 文件不再重复写 using System / System.Linq 等。
+
+global using global::System;
+global using global::System.Collections.Generic;
+global using global::System.IO;
+global using global::System.Linq;
+global using global::System.Text;
+global using global::System.Threading;
+global using global::System.Threading.Tasks;
 
 global using Application       = System.Windows.Application;
 global using MessageBox        = System.Windows.MessageBox;
@@ -29,3 +40,4 @@ global using Color   = System.Windows.Media.Color;
 global using Pen     = System.Windows.Media.Pen;
 
 // System.AppContext 是 .NET 自带类,我们的全局上下文叫 AppHost,见 Services/AppHost.cs
+

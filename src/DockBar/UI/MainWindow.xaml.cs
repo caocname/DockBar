@@ -67,9 +67,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 主题切换:重新指向当前主题的色板。
+    /// 主题切换:重新指向当前主题的色板,并把窗口实色背景刷成对应色调。
     /// 主窗口已不用 AllowsTransparency + 亚克力(为修复内部拖拽漏到桌面的问题),
-    /// 只切色板就够了;窗口本身的 Background 也按主题刷新。
+    /// 改用 DWM 系统级圆角 + 暗色标题区把"圆角 + 主题感"补回来。
     /// </summary>
     public void ApplyTheme()
     {
@@ -84,6 +84,10 @@ public partial class MainWindow : Window
         Background = new SolidColorBrush(cfg.DarkMode
             ? Color.FromRgb(0x1F, 0x1F, 0x1F)
             : Color.FromRgb(0xF5, 0xF5, 0xF5));
+
+        // Win11 系统级圆角 + 暗色标题(无标题栏也影响阴影/边线色)。Win10 静默失败。
+        WindowEffects.ApplyRoundCorners(this, dark: cfg.DarkMode,
+            preference: NativeMethods.DwmWindowCornerPreference.Round);
     }
 
     private void ApplyAcrylicMica()
@@ -187,10 +191,10 @@ public partial class MainWindow : Window
     // ----- 拖入文件:复制到绑定文件夹,只接受 lnk/exe -----
 
     /// <summary>
-    /// 顶层拦截 DragEnter/DragOver。区分两种来源:
-    ///  ① 外部资源管理器/桌面拖文件进来 → DataFormats.FileDrop,给 Move effect 表示接收;
-    ///  ② 内部图标拖拽(DRAG_FORMAT) → 这里不动,留给 Border/Tab 自己的 Drop handler 决定排序/换分类。
-    /// 不识别的格式给 None,光标会变禁止符,提示用户。
+    /// 顶层拦截 DragEnter/DragOver。这条路径只用于"外部拖入":
+    /// 桌面 / 资源管理器把文件拖到窗口区域,DataObject 含 FileDrop → 落到绑定文件夹。
+    /// 窗口内的图标拖拽走的是 CaptureMouse + MouseMove 自管路径,根本不会触发 OLE,
+    /// 所以这里见到 FileDrop 一律当作外部来源处理,不需要再判别"是不是自己人"。
     /// </summary>
     private void OnDragEnterAny(object sender, DragEventArgs e)
     {
@@ -199,17 +203,10 @@ public partial class MainWindow : Window
             e.Effects = DragDropEffects.Move;
             e.Handled = true;
         }
-        else if (e.Data.GetDataPresent(DRAG_FORMAT))
-        {
-            // 内部拖拽:默认 Move,具体由更内层的 Drop handler 接管
-            e.Effects = DragDropEffects.Move;
-            // 不 Handled,让事件继续冒泡到 Border/Tab
-        }
     }
 
     private void OnFilesDropped(object sender, DragEventArgs e)
     {
-        // 内部拖拽不在这里处理(每个 Border/Tab 自己有 Drop handler 并 Handled=true)
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         e.Handled = true;
         var paths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
@@ -392,26 +389,41 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
-    // ----- 拖拽改归属(图标 → 标签) -----
-    private const string DRAG_FORMAT = "DockBar.IconFileName";
+    // ===================================================================
+    // 窗口内图标拖拽 — 完全自管,不走 OLE。
+    // ===================================================================
+    // 历史:之前用 DragDrop.DoDragDrop 让 Shell 协商,Win11 24H2 上桌面无论怎么塞 DataObject
+    //      都直接 DROPEFFECT_NONE(光标禁止符),拖出窗口到桌面永远不成功。
+    // 新方案:从图标 Border 上鼠标按下→移动→松手,我们自己用 CaptureMouse 跟踪。
+    //       松手那一刻读 Win32 真实光标坐标,自己判 4 种落点:
+    //         ① 同分类内另一个图标 → 在它前/后插入(排序)
+    //         ② 分类标签 → 换分类
+    //         ③ 窗口矩形外 + 命中 Shell 桌面 → File.Move 到桌面目录
+    //         ④ 其它(空白) → 不动
+    //      不调 DoDragDrop = 不依赖 OLE = 桌面拒不拒绝都跟我们无关。
+    //
+    // 外部拖入(桌面 → 本窗口)仍走 WPF OLE 原路径(顶层 PreviewDrop + AcceptFiles),
+    // 那条路 Shell 是源,我们是目标,DataObject 是 Explorer 自己造的合法 CF_HDROP,从来都正常。
+    private const string DRAG_FORMAT = "DockBar.IconFileName"; // 弃用,留作历史标记
+
+    /// <summary>正在被拖动的图标 FileName,null = 当前没在拖。</summary>
+    private string? _dragFileName;
+    /// <summary>正在被拖的图标 Border,松手时清掉它的视觉态;也用来 ReleaseMouseCapture。</summary>
+    private Border? _dragBorder;
+    /// <summary>当前显示拖拽指示线的目标 Border(null = 未指向任何图标)。每帧最多一个。</summary>
+    private Border? _dragHighlightTarget;
 
     private static void OnTabDragOver(System.Windows.DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DRAG_FORMAT))
-        {
-            e.Effects = DragDropEffects.Move;
-            e.Handled = true;
-        }
-        // 外部 FileDrop 不要在这里 Handled,让它冒泡到顶层 PreviewDrop;
-        // 这样从桌面把文件直接拖到分类标签上也能落到「绑定文件夹 + 当前分类」
+        // 窗口内图标拖拽不走 OLE,所以这里只可能是外部 FileDrop。
+        // 我们不在 Tab 上 Handled=true,让 FileDrop 冒泡到顶层 PreviewDrop,
+        // 走 AcceptFiles → GetOrCreateCurrentCategory(); "落到当前分类"对用户更直觉,
+        // 比"落到拖到的那个 Tab 但不能切到那"更顺手。
     }
 
     private void OnTabDrop(System.Windows.DragEventArgs e, CategoryConfig target)
     {
-        if (!e.Data.GetDataPresent(DRAG_FORMAT)) return;
-        var fn = (string)e.Data.GetData(DRAG_FORMAT);
-        MoveToCategory(fn, target);
-        e.Handled = true;
+        // 同上,留给顶层处理,这里是空 handler 以兼容签名。
     }
 
     private void MoveToCategory(string fileName, CategoryConfig target)
@@ -528,8 +540,11 @@ public partial class MainWindow : Window
         var border = new Border
         {
             Padding = new Thickness(10, 10, 10, 8),
+            Margin = new Thickness(2),
             CornerRadius = new CornerRadius(10),
             Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(1),
             Cursor = Cursors.Hand,
             Child = stack,
             Tag = item,
@@ -537,8 +552,17 @@ public partial class MainWindow : Window
             // 让本图标也能做 drop target,实现「拖到图标上 = 在它前/后插入」
             AllowDrop = true,
         };
-        border.MouseEnter += (_, _) => border.Background = Hover();
-        border.MouseLeave += (_, _) => border.Background = Brushes.Transparent;
+        // hover:轻底色 + 极淡描边,放在拖拽 effect 之外的视觉反馈
+        border.MouseEnter += (_, _) =>
+        {
+            border.Background = Hover();
+            border.BorderBrush = (Brush)FindResource("Stroke");
+        };
+        border.MouseLeave += (_, _) =>
+        {
+            border.Background = Brushes.Transparent;
+            border.BorderBrush = Brushes.Transparent;
+        };
         // 双击挂到 Down,Up 上 ClickCount 在 WPF 里不可靠
         border.MouseLeftButtonDown += (_, e) =>
         {
@@ -563,62 +587,230 @@ public partial class MainWindow : Window
             finally { _suppressMouseLeave = false; }
             e.Handled = true;
         };
-        // 按住左键拖动 → 只塞 DRAG_FORMAT 这一种自定义格式。
-        // 关键:不要再塞 DataFormats.FileDrop。否则会有两个连锁灾难:
-        //  ① 光标稍微滑出窗口边缘,桌面/资源管理器看到 FileDrop 直接把文件 Move 走 → 图标飞到桌面;
-        //  ② 即使在窗口内松手,顶层 PreviewDrop 走 tunneling 比 Border.Drop 先到,
-        //     OnFilesDropped 看到 FileDrop 就 Handled=true 把事件吃掉,内部排序根本轮不到执行。
-        // 内部拖拽只在窗口里有意义(换分类 / 排序),不需要让外部目标识别。
-        // 后续如果要实现「拖到桌面 = 把文件搬出去」,应加一个明确的辅助键(如按住 Alt)再附加 FileDrop,
-        // 默认形态保持现在这样最安全。
+        // ----- 自管拖拽:按下 → 移动 → 松手 -----
+        // 见类顶部 _dragFileName 注释,所有逻辑见 BeginIconDrag / OnIconDragMove / EndIconDrag。
         System.Windows.Point startPt = default;
-        border.PreviewMouseLeftButtonDown += (_, e) => startPt = e.GetPosition(this);
+        border.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            // 双击落点也会进这里(ClickCount==2),但上面的 MouseLeftButtonDown 已经先 Handled
+            // 把双击吃掉了,这里只会拿到 ClickCount==1 的单击。记起点供阈值判断。
+            if (e.ClickCount >= 2) return;
+            startPt = e.GetPosition(this);
+        };
         border.PreviewMouseMove += (_, e) =>
         {
             if (e.LeftButton != MouseButtonState.Pressed) return;
+            // 已经在拖了 → 走移动分支
+            if (_dragFileName != null) { OnIconDragMove(); return; }
+            // 还没拖 → 检查是否过了启动阈值
             var p = e.GetPosition(this);
-            // 拖出 6px 才认作拖拽,否则当点击
             if (Math.Abs(p.X - startPt.X) < 6 && Math.Abs(p.Y - startPt.Y) < 6) return;
-            var data = new System.Windows.DataObject(DRAG_FORMAT, item.FileName);
-            // 拖拽期间禁止隐藏。结束后让 250ms tick 用真坐标决定要不要缩
-            _suppressMouseLeave = true;
-            _hideTimer.Stop();
-            try
-            {
-                DragDrop.DoDragDrop(border, data, DragDropEffects.Move);
-            }
-            finally
-            {
-                _suppressMouseLeave = false;
-            }
+            BeginIconDrag(border, item);
         };
-        // 同分类内排序:把别的图标拖到我身上 = 在我前/后插入
-        border.DragEnter += (_, e) => OnIconDragOver(e);
-        border.DragOver  += (_, e) => OnIconDragOver(e);
-        border.Drop      += (_, e) => OnIconDrop(e, item, border);
+        border.PreviewMouseLeftButtonUp += (_, _) =>
+        {
+            if (_dragFileName != null) EndIconDrag(commit: true);
+        };
+        border.LostMouseCapture += (_, _) =>
+        {
+            // 用户按 Esc / 切到别的窗口 / 我们自己 Release → 当作取消
+            if (_dragFileName != null) EndIconDrag(commit: false);
+        };
         return border;
     }
 
-    /// <summary>同分类内排序:只接受内部图标拖拽,外部 FileDrop 留给顶层 PreviewDrop 处理。</summary>
-    private static void OnIconDragOver(System.Windows.DragEventArgs e)
+    // ---------- 自管拖拽实现 ----------
+
+    private void BeginIconDrag(Border source, AppItem item)
     {
-        if (e.Data.GetDataPresent(DRAG_FORMAT))
-        {
-            e.Effects = DragDropEffects.Move;
-            e.Handled = true;
-        }
-        // 不是内部格式就不 Handled,让 FileDrop 冒泡到顶层 PreviewDrop
+        _dragFileName = item.FileName;
+        _dragBorder = source;
+        _suppressMouseLeave = true;
+        _hideTimer.Stop();
+        // 给个抓手光标作反馈;Border 上 hover 时设的 Cursors.Hand 在 capture 期间被覆盖
+        Mouse.OverrideCursor = Cursors.Hand;
+        // 捕获到 Window 级别,光标移出 Border 也能继续收 MouseMove
+        // (Border.CaptureMouse 也行,但移出 Window 后就没事件了;我们要监听到松手在桌面上的情况,
+        //  所以捕到主窗口 HWND 上更稳;不过 WPF 的 mouse capture 跨 HWND 仍受限,
+        //  我们用主循环 PreviewMouseMove + Win32 真实坐标兜底)
+        source.CaptureMouse();
     }
 
-    private void OnIconDrop(System.Windows.DragEventArgs e, AppItem target, FrameworkElement targetElem)
+    /// <summary>拖拽过程中:实时高亮"鼠标当前指向的图标"作为目标提示。</summary>
+    private void OnIconDragMove()
     {
-        if (!e.Data.GetDataPresent(DRAG_FORMAT)) return;
-        var fn = (string)e.Data.GetData(DRAG_FORMAT);
-        // 鼠标落点在 target 中点之前 → 插到 target 之前;之后 → 插到 target 之后
-        var pos = e.GetPosition(targetElem);
-        bool after = pos.X > targetElem.RenderSize.Width / 2;
-        ReorderInCurrent(fn, target.FileName, after);
-        e.Handled = true;
+        // 用 Win32 拿真实屏幕坐标,在自己的窗口里做命中测试(转回 Window 客户区坐标)
+        if (!GetCursorPos(out var screenPt)) return;
+        var winPt = PointFromScreen(new System.Windows.Point(screenPt.X, screenPt.Y));
+
+        Border? newTarget = null;
+        bool? newAfter = null;
+        // VisualTreeHelper.HitTest 在窗口客户区做命中,沿 visual 树找最近的 AppItem-tagged Border
+        var hit = VisualTreeHelper.HitTest(this, winPt);
+        if (hit?.VisualHit is DependencyObject d)
+        {
+            for (var cur = d; cur != null; cur = VisualTreeHelper.GetParent(cur))
+            {
+                if (cur is Border b && b.Tag is AppItem ai && b != _dragBorder)
+                {
+                    var pos = Mouse.GetPosition(b);
+                    newTarget = b;
+                    newAfter = pos.X > b.RenderSize.Width / 2;
+                    break;
+                }
+            }
+        }
+
+        // 切高亮:旧的清掉,新的画一条
+        if (_dragHighlightTarget != null && _dragHighlightTarget != newTarget)
+            ClearDropIndicator(_dragHighlightTarget);
+        _dragHighlightTarget = newTarget;
+        if (newTarget != null && newAfter.HasValue)
+        {
+            newTarget.BorderBrush = (Brush)FindResource("Accent");
+            newTarget.BorderThickness = newAfter.Value
+                ? new Thickness(0, 0, 2, 0)
+                : new Thickness(2, 0, 0, 0);
+        }
+    }
+
+    /// <summary>松手:根据光标当前位置决定四种动作之一。</summary>
+    private void EndIconDrag(bool commit)
+    {
+        var fn = _dragFileName;
+        var src = _dragBorder;
+        _dragFileName = null;
+        _dragBorder = null;
+        Mouse.OverrideCursor = null;
+
+        if (_dragHighlightTarget != null)
+        {
+            ClearDropIndicator(_dragHighlightTarget);
+            _dragHighlightTarget = null;
+        }
+        if (src != null && src.IsMouseCaptured) src.ReleaseMouseCapture();
+
+        // 标志位推迟一帧关掉,免得 ReleaseMouseCapture 之后 250ms tick 误判把窗口收起来
+        Dispatcher.BeginInvoke(new Action(() => _suppressMouseLeave = false),
+            System.Windows.Threading.DispatcherPriority.Background);
+
+        if (!commit || fn == null) return;
+        if (src == null || src.Tag is not AppItem srcItem) return;
+
+        if (!GetCursorPos(out var screenPt)) return;
+
+        // 先看是不是落在窗口里。落在窗口里 → 排序/换分类;落在外面 → 桌面 fallback。
+        if (TryGetWindowClientPoint(screenPt, out var winPt))
+        {
+            // 1) 命中分类标签 → 换分类
+            var hit = VisualTreeHelper.HitTest(this, winPt);
+            if (hit?.VisualHit is DependencyObject d1)
+            {
+                for (var cur = d1; cur != null; cur = VisualTreeHelper.GetParent(cur))
+                {
+                    if (cur is System.Windows.Controls.Primitives.ToggleButton tb &&
+                        tb.Tag is string catId)
+                    {
+                        var cat = AppHost.Current!.Config.Categories
+                            .FirstOrDefault(c => c.Id == catId);
+                        if (cat != null) MoveToCategory(fn, cat);
+                        return;
+                    }
+                }
+                // 2) 命中另一个图标 → 排序
+                for (var cur = d1; cur != null; cur = VisualTreeHelper.GetParent(cur))
+                {
+                    if (cur is Border b && b.Tag is AppItem ai && b != src)
+                    {
+                        var local = Mouse.GetPosition(b);
+                        bool after = local.X > b.RenderSize.Width / 2;
+                        ReorderInCurrent(fn, ai.FileName, after);
+                        return;
+                    }
+                }
+            }
+            // 3) 窗口内但落空 → 不动
+            return;
+        }
+
+        // 4) 落在窗口外 → 命中桌面就 File.Move 过去
+        TryMoveSourceToDesktopIfCursorOnDesktop(srcItem.FullPath);
+    }
+
+    /// <summary>把屏幕坐标换成窗口客户区坐标;返回 false 表示坐标在窗口矩形外。</summary>
+    private bool TryGetWindowClientPoint(NativeMethods.POINT screenPt, out System.Windows.Point winPt)
+    {
+        winPt = default;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return false;
+        if (!GetWindowRect(hwnd, out var r)) return false;
+        if (screenPt.X < r.Left || screenPt.X >= r.Right ||
+            screenPt.Y < r.Top  || screenPt.Y >= r.Bottom) return false;
+        winPt = PointFromScreen(new System.Windows.Point(screenPt.X, screenPt.Y));
+        return true;
+    }
+
+    /// <summary>松手时光标命中桌面就把绑定文件夹里的源文件 Move 过去,呈现"图标飞到桌面"的视觉效果。</summary>
+    private void TryMoveSourceToDesktopIfCursorOnDesktop(string srcPath)
+    {
+        try
+        {
+            if (!File.Exists(srcPath)) return;
+            if (!GetCursorPos(out var pt)) return;
+            var hwnd = WindowFromPoint(pt);
+            if (hwnd == IntPtr.Zero) return;
+
+            // 自己的窗口(主窗口/触发条)就不算"拖出去"
+            var myMain = new WindowInteropHelper(this).Handle;
+            var root = GetAncestor(hwnd, GA_ROOT);
+            if (root == myMain) return;
+
+            // 桌面探测:沿 hwnd 链一路上行,任意一层类名命中 Progman/WorkerW/SHELLDLL_DefView/SysListView32
+            // 都算桌面,也兼容 GetShellWindow() 直接命中。Win11 桌面 host 在多 monitor 下层级会变。
+            bool isDesktop = false;
+            var shellWnd = GetShellWindow();
+            for (var cur = hwnd; cur != IntPtr.Zero; cur = GetAncestor(cur, GA_PARENT))
+            {
+                if (cur == shellWnd) { isDesktop = true; break; }
+                var sb = new System.Text.StringBuilder(64);
+                GetClassName(cur, sb, sb.Capacity);
+                var cls = sb.ToString();
+                if (cls is "Progman" or "WorkerW" or "SHELLDLL_DefView" or "SysListView32")
+                {
+                    isDesktop = true;
+                    break;
+                }
+                if (cur == root) break;
+            }
+            if (!isDesktop) return;
+
+            var destDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (!Directory.Exists(destDir)) return;
+
+            var dst = Path.Combine(destDir, Path.GetFileName(srcPath));
+            // 同名加 (2)
+            int n = 2;
+            while (File.Exists(dst))
+            {
+                var name = Path.GetFileNameWithoutExtension(srcPath);
+                var ext = Path.GetExtension(srcPath);
+                dst = Path.Combine(destDir, $"{name} ({n}){ext}");
+                n++;
+                if (n > 99) return;
+            }
+            File.Move(srcPath, dst);
+            RefreshItems();
+        }
+        catch { /* 失败不打扰用户,文件还在窗口里 */ }
+    }
+
+    /// <summary>把图标 Border 的拖拽落点提示清掉,恢复成 hover/默认态。</summary>
+    private void ClearDropIndicator(Border target)
+    {
+        target.BorderThickness = new Thickness(1);
+        target.BorderBrush = target.IsMouseOver
+            ? (Brush)FindResource("Stroke")
+            : Brushes.Transparent;
     }
 }
 

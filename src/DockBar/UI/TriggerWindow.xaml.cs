@@ -128,8 +128,8 @@ public partial class TriggerWindow : Window
             // 沿边的位置直接用鼠标当前位置
             cfg.TriggerOffsetRatio = newSide switch
             {
-                DockSide.Top => Math.Clamp((p.X - work.Left) / Math.Max(1, work.Width  - cfg.TriggerLengthPx), 0, 1),
-                _            => Math.Clamp((p.Y - work.Top)  / Math.Max(1, work.Height - cfg.TriggerLengthPx), 0, 1),
+                DockSide.Top => MathPolyfill.Clamp((p.X - work.Left) / Math.Max(1, work.Width  - cfg.TriggerLengthPx), 0, 1),
+                _            => MathPolyfill.Clamp((p.Y - work.Top)  / Math.Max(1, work.Height - cfg.TriggerLengthPx), 0, 1),
             };
             AppHost.Current!.OnDockChanged();
         }
@@ -138,8 +138,8 @@ public partial class TriggerWindow : Window
             // 同一条边内沿着滑动
             cfg.TriggerOffsetRatio = newSide switch
             {
-                DockSide.Top => Math.Clamp((p.X - work.Left) / Math.Max(1, work.Width  - cfg.TriggerLengthPx), 0, 1),
-                _            => Math.Clamp((p.Y - work.Top)  / Math.Max(1, work.Height - cfg.TriggerLengthPx), 0, 1),
+                DockSide.Top => MathPolyfill.Clamp((p.X - work.Left) / Math.Max(1, work.Width  - cfg.TriggerLengthPx), 0, 1),
+                _            => MathPolyfill.Clamp((p.Y - work.Top)  / Math.Max(1, work.Height - cfg.TriggerLengthPx), 0, 1),
             };
             ApplyDock();
         }

@@ -73,5 +73,25 @@ internal static class WindowEffects
         }
         finally { Marshal.FreeHGlobal(ptr); }
     }
+
+    /// <summary>
+    /// 给一个普通(非 AllowsTransparency)WPF 窗口套上 Win11 系统级圆角 + 暗色标题栏。
+    /// 这条路径不依赖 layered window,所以 OLE 拖放不会出现透明区域漏检测的问题。
+    /// 无系统圆角(Win10 / 旧版本)时静默失败,窗口仍是直角。
+    /// </summary>
+    public static void ApplyRoundCorners(Window w, bool dark = true,
+        DwmWindowCornerPreference preference = DwmWindowCornerPreference.Round)
+    {
+        var hwnd = new WindowInteropHelper(w).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        int useDark = dark ? 1 : 0;
+        DwmSetWindowAttribute(hwnd, (int)DwmWindowAttribute.DWMWA_USE_IMMERSIVE_DARK_MODE,
+            ref useDark, sizeof(int));
+
+        int corner = (int)preference;
+        DwmSetWindowAttribute(hwnd, (int)DwmWindowAttribute.DWMWA_WINDOW_CORNER_PREFERENCE,
+            ref corner, sizeof(int));
+    }
 }
 

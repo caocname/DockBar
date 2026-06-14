@@ -2,23 +2,35 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <!-- 切回 .NET Framework 4.8:Win10 1903+ / Win11 全版本系统自带,
+         用户开箱双击即可,不需要装任何运行时;exe 1-3 MB,常驻内存 30-50 MB。
+         项目 2400 行代码没有任何 .NET 8 独占的语法/API,只有 Math.Clamp 不在 net48,
+         我们自己实现一份(MathExt 类)。 -->
+    <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- net48 默认 LangVersion=7.3,显式拉到 latest 才有 file-scoped namespace /
+         global using / nullable 等 C# 12 语法。这些是编译期糖,不依赖运行时。
+         IsExternalInit polyfill 由 PolySharp 包补齐(init/required 等)。 -->
     <LangVersion>latest</LangVersion>
-    <AssemblyName>DockBar</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <!-- 程序集/exe 名 = VoidTidy。代码里的 namespace DockBar.* 不动,不需要批量改。
+         嵌入资源 LogicalName 仍是 "DockBar.app.ico",TrayIcon.LoadIcon 按这个名字读。 -->
+    <AssemblyName>VoidTidy</AssemblyName>
     <RootNamespace>DockBar</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
-    <!-- 服务端 GC 不适合常驻 GUI:用 workstation + 并发,空闲时更愿意把内存还给系统 -->
-    <ServerGarbageCollection>false</ServerGarbageCollection>
-    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
-    <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
-    <TieredCompilation>true</TieredCompilation>
-    <TieredPGO>true</TieredPGO>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- 资源管理器右键属性看到的"产品名 / 描述" -->
+    <Product>VoidTidy</Product>
+    <AssemblyTitle>VoidTidy</AssemblyTitle>
+    <Description>VoidTidy — Windows 11 悬浮快捷收纳启动栏</Description>
+    <Company>caocname</Company>
+    <Copyright>Copyright © caocname</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <!-- net48 是 workstation+并发 GC 默认,不需要在 csproj 里再设服务端 GC。 -->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -27,16 +39,41 @@
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
-  <!-- 仅在 dotnet publish 时生效:单文件 + self-contained,见 README -->
-  <PropertyGroup Condition="'$(PublishProtocol)' != '' or '$(_IsPublishing)' == 'true'">
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <PublishReadyToRun>true</PublishReadyToRun>
-  </PropertyGroup>
-
   <ItemGroup>
+    <!-- net48 BCL 没有内置 System.Text.Json,引入 NuGet 版本(ASP.NET 维护,稳定) -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <!-- net48 没有 init / required / file 等关键字的运行时类型,PolySharp 编译期生成桩代码 -->
+    <PackageReference Include="PolySharp" Version="1.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- Costura.Fody:把所有 NuGet 依赖 dll(System.Text.Json/System.Memory 等) 在编译后
+         合并嵌入到 VoidTidy.exe 内部,运行时从 manifest stream 加载。
+         结果就是真单文件:换台 Win11 电脑只要这一个 exe 就能跑,不依赖任何外部 dll。
+         Win10 1903+ 和全部 Win11 自带 .NET Framework 4.8,所以不需要打包运行时本身。 -->
+    <PackageReference Include="Fody" Version="6.8.1">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Costura.Fody" Version="5.7.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- 把 app.ico 嵌入程序集,TrayIcon 运行时从 manifest stream 直接读,不依赖 exe 路径。 -->
+    <EmbeddedResource Include="app.ico" LogicalName="DockBar.app.ico" />
   </ItemGroup>
+
+  <!-- net48 publish + Costura.Fody = 一个 VoidTidy.exe 单文件,所有依赖都内嵌。
+       Win10 1903+ / Win11 自带 .NET 4.8,目标机不需要装任何东西,把 exe 拷过去就能跑。 -->
+  <Target Name="_PackagePublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_OutDir>$(MSBuildProjectDirectory)\publish</_OutDir>
+      <_PublishedExe>$(PublishDir)$(AssemblyName).exe</_PublishedExe>
+      <_FinalExe>$(_OutDir)\$(AssemblyName).exe</_FinalExe>
+    </PropertyGroup>
+    <MakeDir Directories="$(_OutDir)" />
+    <!-- 把 Costura 合并后的单 exe 复制出来到 publish/ 根目录,方便分发 -->
+    <Copy SourceFiles="$(_PublishedExe)" DestinationFiles="$(_FinalExe)"
+          Condition="Exists('$(_PublishedExe)')" />
+    <Message Importance="high" Text="单文件 exe: $(_FinalExe)" />
+  </Target>
 
 </Project>

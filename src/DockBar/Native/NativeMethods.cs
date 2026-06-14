@@ -43,6 +43,14 @@ internal static class NativeMethods
     public static extern bool GetCursorPos(out POINT lpPoint);
 
     [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT pt);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+    public const uint GA_ROOT = 2;
+    public const uint GA_PARENT = 1;
+
+    [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
 
     [DllImport("user32.dll")]
@@ -83,6 +91,15 @@ internal static class NativeMethods
         MainWindow = 2,   // Mica
         TransientWindow = 3, // Acrylic
         TabbedWindow = 4,
+    }
+
+    /// <summary>Win11 DWM 圆角偏好,配合 DWMWA_WINDOW_CORNER_PREFERENCE 使用。</summary>
+    public enum DwmWindowCornerPreference : int
+    {
+        Default = 0,
+        DoNotRound = 1,
+        Round = 2,        // 大圆角(标准)
+        RoundSmall = 3,   // 小圆角
     }
 
     [DllImport("dwmapi.dll")]

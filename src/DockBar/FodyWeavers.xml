@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  Costura 把所有引用的 NuGet/CLR-外 dll 在编译后塞进 VoidTidy.exe 内嵌资源,
+  运行时由生成的 AssemblyResolve hook 从 stream 加载。
+  默认就是把所有非平台 dll 都嵌入,这正是我们要的:换电脑只带 1 个 exe 即可。
+-->
+<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
+  <Costura />
+</Weavers>

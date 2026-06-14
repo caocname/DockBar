@@ -46,7 +46,8 @@ internal sealed class TrayIcon : IDisposable
 
         m.Items.Add("重启", null, (_, _) =>
         {
-            var exe = Environment.ProcessPath;
+            // net48 没有 Environment.ProcessPath
+            var exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
             if (!string.IsNullOrEmpty(exe))
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true });
             _ctx.Quit();
@@ -58,13 +59,30 @@ internal sealed class TrayIcon : IDisposable
 
     private static Icon LoadIcon()
     {
-        // 系统自带的应用图标,免去带资源
+        // 优先从程序集嵌入资源加载 app.ico(csproj 里 LogicalName="DockBar.app.ico")。
+        // 这样多分辨率全保留(256/128/64/48/32/24/16),托盘自动挑 16x16,任务栏挑大尺寸。
+        // ExtractAssociatedIcon 在 net48 + 中文路径 + self-extract 等场景下可能失败或只拿到 16x16,
+        // 嵌入资源是最确定的路径。
         try
         {
-            var sys = SystemIcons.Application;
-            return sys;
+            var asm = typeof(TrayIcon).Assembly;
+            using var s = asm.GetManifestResourceStream("DockBar.app.ico");
+            if (s != null) return new Icon(s);
         }
-        catch { return SystemIcons.Application; }
+        catch { /* 回退 */ }
+
+        // 兜底:从 exe 提取
+        try
+        {
+            var exe = System.Reflection.Assembly.GetEntryAssembly()?.Location;
+            if (exe != null && File.Exists(exe))
+            {
+                var ico = Icon.ExtractAssociatedIcon(exe);
+                if (ico != null) return ico;
+            }
+        }
+        catch { /* 回退 */ }
+        return SystemIcons.Application;
     }
 
     public void Dispose()

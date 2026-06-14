@@ -28,7 +28,8 @@ internal static class AutoStart
                      ?? Registry.CurrentUser.CreateSubKey(KEY)!;
         if (enable)
         {
-            var exe = Environment.ProcessPath ?? "";
+            // net48 没有 Environment.ProcessPath,从主模块拿
+            var exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
             if (string.IsNullOrEmpty(exe)) return;
             // --silent 让用户配开机自启时不要弹主窗口
             k.SetValue(NAME, $"\"{exe}\" --silent");

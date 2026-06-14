@@ -35,14 +35,16 @@ public partial class SettingsWindow : Window
         LoadFromConfig();
         BrowseBtn.Click += (_, _) =>
         {
-            // .NET 8 自带 Microsoft.Win32.OpenFolderDialog
-            var dlg = new Microsoft.Win32.OpenFolderDialog
+            // net48 没有 Microsoft.Win32.OpenFolderDialog,用 WinForms 的 FolderBrowserDialog。
+            // 视觉上是 Vista 风格新版选择器(AutoUpgradeEnabled 默认 true),用户体验等价。
+            using var dlg = new System.Windows.Forms.FolderBrowserDialog
             {
-                Title = "选择收纳文件夹",
-                InitialDirectory = FolderBox.Text,
+                Description = "选择收纳文件夹",
+                SelectedPath = FolderBox.Text,
+                ShowNewFolderButton = true,
             };
-            if (dlg.ShowDialog(this) == true)
-                FolderBox.Text = dlg.FolderName;
+            if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                FolderBox.Text = dlg.SelectedPath;
         };
         // 注意:此窗口用 Show() 非模态弹出,不能赋值 DialogResult,否则 WPF 会抛 InvalidOperationException
         // 进而导致整个 App 退出。直接 Close() 即可。

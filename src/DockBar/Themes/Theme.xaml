@@ -4,9 +4,10 @@
 
     <!-- ===== 颜色:Win11 暗色系 ===== -->
     <!--
-        毛玻璃模糊由系统合成,不在 WPF 这层叠任何调色,保持完全透明。
-        子对话框需要内层 Border 时仍引用这两个 brush,但都是纯透明,
-        实际背景全部由系统亚克力渲染。
+        历史:旧版主窗口走亚克力,要求纯透明 brush 由系统合成画底。
+        现在主窗口改成实色背景(为了 OLE 拖放可靠) + DWM 圆角。这两个 brush 仅
+        InputBoxWindow / SettingsWindow / IconPickerWindow / TriggerWindow 还在用,
+        这些窗口仍走亚克力,所以保持透明。
     -->
     <SolidColorBrush x:Key="AcrylicTint"      Color="#00000000"/>
     <SolidColorBrush x:Key="AcrylicTintLight" Color="#00FFFFFF"/>
@@ -17,8 +18,9 @@
 
     <SolidColorBrush x:Key="Surface"          Color="#E61F1F1F"/>
     <SolidColorBrush x:Key="SurfaceTrigger"   Color="#80606060"/>
-    <SolidColorBrush x:Key="SurfaceHover"     Color="#22FFFFFF"/>
-    <SolidColorBrush x:Key="SurfaceHoverLight" Color="#22000000"/>
+    <!-- hover 调亮一点,实色背景下太淡看不出 -->
+    <SolidColorBrush x:Key="SurfaceHover"     Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="SurfaceHoverLight" Color="#14000000"/>
     <SolidColorBrush x:Key="SurfacePress"     Color="#33FFFFFF"/>
 
     <!-- 暗色主题文字 -->
@@ -31,7 +33,8 @@
 
     <SolidColorBrush x:Key="Accent"           Color="#FF60CDFF"/>
     <SolidColorBrush x:Key="ItemHover"        Color="#1FFFFFFF"/>
-    <SolidColorBrush x:Key="Stroke"           Color="#22FFFFFF"/>
+    <!-- 描边:实色窗口下提一点,让卡片 hover/分割线看得出来 -->
+    <SolidColorBrush x:Key="Stroke"           Color="#33FFFFFF"/>
 
     <!-- ===== 分类标签按钮 =====
          Foreground / Hover 用 DynamicResource:对话框可在 Window.Resources 里覆盖
@@ -40,7 +43,7 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDim}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="12,5"/>
+        <Setter Property="Padding" Value="14,6"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -54,13 +57,14 @@
                         </Border>
                         <!-- 选中态下方小圆点 -->
                         <Rectangle x:Name="Indicator" Fill="{DynamicResource Accent}"
-                                   Height="2" Width="14" RadiusX="1" RadiusY="1"
+                                   Height="2" Width="18" RadiusX="1" RadiusY="1"
                                    VerticalAlignment="Bottom" HorizontalAlignment="Center"
-                                   Margin="0,0,0,1" Visibility="Collapsed"/>
+                                   Margin="0,0,0,-2" Visibility="Collapsed"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Foreground}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource Foreground}"/>
@@ -178,7 +182,20 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border Background="#55FFFFFF" CornerRadius="3"/>
+                                            <Border x:Name="ThumbBd"
+                                                    Background="#44FFFFFF"
+                                                    CornerRadius="3"
+                                                    Margin="1,0">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#88FFFFFF"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                            </Border>
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
