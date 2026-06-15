@@ -9,6 +9,20 @@
 > 鼠标移到屏幕边缘的小条上 → 自动展开图标网格 → 双击启动。
 > 不联网、不打广告、不带「全家桶」。
 
+## 下载即用 ⭐
+
+**直接下载 → [dist/VoidTidy.exe](dist/VoidTidy.exe)**(单文件 ~650 KB)。
+
+双击就能跑。Win10 1903+ / 全部 Win11 自带 .NET Framework 4.8,**不需要装任何运行时**。
+拷到任意 Win11 电脑都行,所有依赖已经用 Costura.Fody 嵌进 exe。
+
+也可以去 [Releases 页](https://github.com/caocname/DockBar/releases) 下打过 tag 的稳定版。
+
+首次启动:右键托盘图标 → **设置** → 选一个本地文件夹作为收纳根目录。
+往里丢一些 `.lnk` / `.exe`,鼠标移到屏幕顶部那条小条就会展开。
+
+---
+
 按 [Windows11 悬浮快捷收纳启动栏软件需求说明书.md](Windows11%20悬浮快捷收纳启动栏软件需求说明书.md) 实现。
 基于 **C# + WPF + .NET Framework 4.8**,Costura.Fody 单文件打包。
 
@@ -41,14 +55,6 @@
 - 后台闲置:WorkingSet 启动后 ~80 MB,10 秒后 `EmptyWorkingSet` 释放回 OS,任务管理器 RAM 列长期 1-3 MB
 - CPU:闲置 0%,4Hz 全屏 / 鼠标位置兜底检测 < 0.1%
 - 文件监控:由内核 `FileSystemWatcher` 驱动,无轮询
-
-## 下载使用
-
-去 [Releases 页](https://github.com/caocname/DockBar/releases) 下 `VoidTidy.exe`,**双击即用**。
-Win10 1903+ / 全部 Win11 自带 .NET Framework 4.8,不需要装运行时。
-
-首次启动:右键托盘图标 → **设置** → 选一个本地文件夹作为收纳根目录。
-往里丢一些 `.lnk` / `.exe`,鼠标移到屏幕顶部那条小条就会展开。
 
 ## 自己编译
 
