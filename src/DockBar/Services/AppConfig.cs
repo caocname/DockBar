@@ -39,7 +39,6 @@ public sealed class AppConfig
     public int WindowLengthPx { get; set; } = 720;     // 展开窗口的「长边」
     public int WindowDepthPx { get; set; } = 360;     // 展开窗口的「短边」
     public int IconSizePx { get; set; } = 48;
-    public bool UseAcrylic { get; set; } = true;
     public bool DarkMode { get; set; } = true;
     public List<CategoryConfig> Categories { get; set; } = new();
     /// <summary>当前选中的分类 Id。</summary>

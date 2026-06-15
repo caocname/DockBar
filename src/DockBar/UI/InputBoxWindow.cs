@@ -36,7 +36,7 @@ public sealed class InputBoxWindow : Window
             Resources["SurfaceHover"]  = (Brush)Application.Current.FindResource("SurfaceHoverLight");
         }
         ResizeMode = ResizeMode.NoResize;
-        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: dark);
+        SourceInitialized += (_, _) => WindowEffects.ApplyRoundCorners(this, dark: dark);
 
         var outer = new Border
         {

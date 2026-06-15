@@ -41,7 +41,6 @@
         <Slider x:Name="IconSlider" Minimum="32" Maximum="96" TickFrequency="8"
                 IsSnapToTickEnabled="True" Margin="0,0,0,12"/>
 
-        <CheckBox x:Name="AcrylicChk" Content="毛玻璃 / Mica 效果" Margin="0,0,0,8"/>
         <CheckBox x:Name="DarkChk"    Content="暗色模式"          Margin="0,0,0,8"/>
         <CheckBox x:Name="AutoChk"    Content="开机自启"          Margin="0,0,0,16"/>
 

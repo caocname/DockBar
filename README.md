@@ -81,7 +81,6 @@ dotnet publish src\DockBar\DockBar.csproj -c Release
   "windowLengthPx": 720,    // 展开窗口长边
   "windowDepthPx": 360,     // 展开窗口短边
   "iconSizePx": 48,
-  "useAcrylic": true,
   "darkMode": true,
   "categories": [
     { "id": "...", "name": "默认", "files": ["VSCode.lnk", "Chrome.lnk"] }
@@ -100,6 +99,7 @@ dotnet publish src\DockBar\DockBar.csproj -c Release
   排序 / 换分类 / `File.Move` 到桌面。彻底规避 OLE 兼容性。
 - **不开 `AllowsTransparency`**:WPF 透明窗口在 OLE 拖入时 hit-test 会漏到下层 HWND,文件被桌面接走。
   改实色背景 + DWM 系统级圆角(`DWMWA_WINDOW_CORNER_PREFERENCE`)拿回 Win11 视觉。
+  亚克力 / Mica 支持也一并删掉:实色窗口在所有桌面背景下文字都可读,而且不再受 layered window 一系列副作用影响。
 - **托盘图标走嵌入资源**:`<EmbeddedResource Include="app.ico" LogicalName="DockBar.app.ico" />`,
   `Icon.ExtractAssociatedIcon` 在 net48 + 中文路径下时灵时不灵。
 
@@ -119,7 +119,7 @@ src/DockBar/
 │   ├── FullscreenDetector.cs  # 前台窗口全屏检测
 │   ├── IconExtractor.cs       # SHGetFileInfo + 256px Jumbo
 │   ├── ShellContextMenu.cs    # IContextMenu 原生右键菜单
-│   └── WindowEffects.cs       # DWM 圆角 / 历史亚克力代码
+│   └── WindowEffects.cs       # DWM 圆角 + 暗色标题
 ├── Services/
 │   ├── AppConfig.cs           # 配置数据结构
 │   ├── ConfigStore.cs         # JSON 落盘

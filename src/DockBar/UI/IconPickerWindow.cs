@@ -49,7 +49,7 @@ internal sealed class IconPickerWindow : Window
             Resources["ForegroundDim"] = fgDim;
             Resources["SurfaceHover"]  = (Brush)Application.Current.FindResource("SurfaceHoverLight");
         }
-        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: dark);
+        SourceInitialized += (_, _) => WindowEffects.ApplyRoundCorners(this, dark: dark);
 
         var outer = new Border
         {

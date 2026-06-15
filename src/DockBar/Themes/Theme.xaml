@@ -2,15 +2,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- ===== 颜色:Win11 暗色系 ===== -->
-    <!--
-        历史:旧版主窗口走亚克力,要求纯透明 brush 由系统合成画底。
-        现在主窗口改成实色背景(为了 OLE 拖放可靠) + DWM 圆角。这两个 brush 仅
-        InputBoxWindow / SettingsWindow / IconPickerWindow / TriggerWindow 还在用,
-        这些窗口仍走亚克力,所以保持透明。
-    -->
-    <SolidColorBrush x:Key="AcrylicTint"      Color="#00000000"/>
-    <SolidColorBrush x:Key="AcrylicTintLight" Color="#00FFFFFF"/>
+    <!-- ===== 颜色:Win11 暗色系 =====
+         主窗口/对话框都走实色 brush + DWM 圆角,不再用亚克力。 -->
 
     <!-- 对话框(设置/管理图标/输入框)用的实色卡片底,确保任何桌面背景下文字都可读 -->
     <SolidColorBrush x:Key="DialogSurfaceDark"  Color="#F22A2A2A"/>

@@ -31,7 +31,7 @@ public partial class SettingsWindow : Window
             Resources["ForegroundDim"] = fgDimLight;
             Resources["SurfaceHover"]  = hoverLight;
         }
-        SourceInitialized += (_, _) => WindowEffects.ApplyAcrylic(this, dark: dark);
+        SourceInitialized += (_, _) => WindowEffects.ApplyRoundCorners(this, dark: dark);
         LoadFromConfig();
         BrowseBtn.Click += (_, _) =>
         {
@@ -73,7 +73,6 @@ public partial class SettingsWindow : Window
         HideOnLaunch.IsChecked = c.Hide == HideMode.OnLaunch;
         DelayBox.Text = c.HideDelayMs.ToString(CultureInfo.InvariantCulture);
         IconSlider.Value = c.IconSizePx;
-        AcrylicChk.IsChecked = c.UseAcrylic;
         DarkChk.IsChecked = c.DarkMode;
         AutoChk.IsChecked = AutoStart.IsEnabled;
     }
@@ -84,7 +83,6 @@ public partial class SettingsWindow : Window
         var oldFolder = c.FolderPath;
         var oldDock = c.Dock;
         var oldDark = c.DarkMode;
-        var oldAcrylic = c.UseAcrylic;
         var oldIcon = c.IconSizePx;
 
         c.FolderPath = string.IsNullOrWhiteSpace(FolderBox.Text) ? null : FolderBox.Text;
@@ -94,7 +92,6 @@ public partial class SettingsWindow : Window
         c.Hide = HideOnLaunch.IsChecked == true ? HideMode.OnLaunch : HideMode.OnMouseLeave;
         if (int.TryParse(DelayBox.Text, out var ms) && ms >= 0 && ms <= 5000) c.HideDelayMs = ms;
         c.IconSizePx = (int)IconSlider.Value;
-        c.UseAcrylic = AcrylicChk.IsChecked == true;
         c.DarkMode   = DarkChk.IsChecked == true;
 
         // 自启注册表写入跑在后台线程,避免阻塞 UI
@@ -107,7 +104,7 @@ public partial class SettingsWindow : Window
         // 决定要不要重建 UI
         bool folderChanged = oldFolder != c.FolderPath;
         bool dockChanged   = oldDock   != c.Dock;
-        bool themeChanged  = oldDark   != c.DarkMode || oldAcrylic != c.UseAcrylic;
+        bool themeChanged  = oldDark   != c.DarkMode;
         bool iconChanged   = oldIcon   != c.IconSizePx;
 
         if (folderChanged) _ctx.OnFolderChangedNoSave(c.FolderPath ?? "");

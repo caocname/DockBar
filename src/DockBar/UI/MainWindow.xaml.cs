@@ -65,14 +65,13 @@ public partial class MainWindow : Window
         ChangeWindowMessageFilterEx(hwnd, WM_DROPFILES,      MSGFLT_ALLOW, IntPtr.Zero);
         ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA,       MSGFLT_ALLOW, IntPtr.Zero);
         ChangeWindowMessageFilterEx(hwnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, IntPtr.Zero);
-        // SourceInitialized 时 HWND 已就绪,可以贴亚克力
+        // SourceInitialized 时 HWND 已就绪,可以套 DWM 圆角
         ApplyTheme();
     }
 
     /// <summary>
     /// 主题切换:重新指向当前主题的色板,并把窗口实色背景刷成对应色调。
-    /// 主窗口已不用 AllowsTransparency + 亚克力(为修复内部拖拽漏到桌面的问题),
-    /// 改用 DWM 系统级圆角 + 暗色标题区把"圆角 + 主题感"补回来。
+    /// 主窗口用实色背景 + DWM 系统级圆角 + 暗色标题区,不依赖 AllowsTransparency / 亚克力。
     /// </summary>
     public void ApplyTheme()
     {
@@ -83,7 +82,7 @@ public partial class MainWindow : Window
         Resources["DynamicForegroundDim"] = (Brush)FindResource(cfg.DarkMode ? "ForegroundDim" : "ForegroundDimLight");
         Resources["DynamicHover"]         = (Brush)FindResource(cfg.DarkMode ? "SurfaceHover" : "SurfaceHoverLight");
 
-        // 整窗背景:暗色 = 深灰,亮色 = 浅灰。实色,不再走亚克力。
+        // 整窗背景:暗色 = 深灰,亮色 = 浅灰
         Background = new SolidColorBrush(cfg.DarkMode
             ? Color.FromRgb(0x1F, 0x1F, 0x1F)
             : Color.FromRgb(0xF5, 0xF5, 0xF5));
@@ -91,11 +90,6 @@ public partial class MainWindow : Window
         // Win11 系统级圆角 + 暗色标题(无标题栏也影响阴影/边线色)。Win10 静默失败。
         WindowEffects.ApplyRoundCorners(this, dark: cfg.DarkMode,
             preference: NativeMethods.DwmWindowCornerPreference.Round);
-    }
-
-    private void ApplyAcrylicMica()
-    {
-        // 留空兼容老调用;主窗口不再用亚克力
     }
 
     public void ApplyDock()

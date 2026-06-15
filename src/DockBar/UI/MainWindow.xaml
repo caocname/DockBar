@@ -13,11 +13,9 @@
         Background="#1F1F1F"
         Visibility="Collapsed">
     <!--
-        AllowsTransparency 已经去掉 = 不再用 WPF Layered Window。
-        原因:开 AllowsTransparency=True + 亚克力时,WPF 的 OLE 命中测试在透明像素上不可靠,
-        窗口里拖图标会漏到下层桌面 HWND 直接被桌面接走 → 文件被搬到桌面。
-        换成实心 Background 后 OLE 拖拽路径稳定,图标排序 / 跨分类 / 拖出窗口的边界判定都精确。
-        圆角由 DWM 系统级 corner preference 提供(MainWindow.xaml.cs ApplyTheme),不再 WPF 画。
+        主窗口走 实色 Background + DWM 系统级圆角(MainWindow.xaml.cs ApplyTheme),
+        不开 AllowsTransparency。这样 OLE 拖入命中测试稳定,
+        圆角由系统裁,Win10 静默回退成直角矩形。
     -->
     <!-- AllowDrop 顺着可视树一路开,确保鼠标无论落在 Border/DockPanel/Tabs/ScrollViewer/Items/WrapPanel
          哪一层,WPF 都能找到 OLE drop target,顶层 PreviewDrag* 才能触发。

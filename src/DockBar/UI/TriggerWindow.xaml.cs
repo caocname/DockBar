@@ -50,7 +50,8 @@ public partial class TriggerWindow : Window
         ChangeWindowMessageFilterEx(hwnd, WM_DROPFILES,      MSGFLT_ALLOW, IntPtr.Zero);
         ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA,       MSGFLT_ALLOW, IntPtr.Zero);
         ChangeWindowMessageFilterEx(hwnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, IntPtr.Zero);
-        WindowEffects.ApplyBlur(this);
+        // 触发条本身是 AllowsTransparency=True 的 layered window,Border 背景用半透明
+        // SurfaceTrigger brush 直接给底色,不再靠系统毛玻璃 API。
     }
 
     /// <summary>根据当前 Config 把触发条贴到屏幕边沿。</summary>

@@ -42,7 +42,7 @@ public sealed class AppHost : IDisposable
         _trigger.ApplyDock();
         // 主窗口初始 Visibility=Collapsed,不会创建 HWND;
         // 但 OLE 拖放目标必须在 HWND 注册才生效,等到第一次 ShowMain 才建会跟 drag session 抢跑,
-        // 表现就是「拖到主窗口面板上没反应」。这里强制建 HWND,SourceInitialized 立刻跑(贴亚克力 + UIPI 过滤),
+        // 表现就是「拖到主窗口面板上没反应」。这里强制建 HWND,SourceInitialized 立刻跑(DWM 圆角 + UIPI 过滤),
         // 同时 WPF 把 AllowDrop=True 的窗口注册成 OLE drop target,后续任何拖拽都能命中。
         new System.Windows.Interop.WindowInteropHelper(_main).EnsureHandle();
         _main.ApplyDock();
@@ -187,7 +187,7 @@ public sealed class AppHost : IDisposable
         _main?.RefreshItems();
     }
 
-    /// <summary>主题(暗/亮、亚克力开关)变了。重新贴亚克力 + 用新色重建 UI。</summary>
+    /// <summary>主题(暗/亮模式)变了。重新刷主窗口色板 + DWM 圆角。</summary>
     public void OnThemeChanged()
     {
         if (_main is null) return;
