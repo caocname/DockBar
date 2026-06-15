@@ -27,9 +27,9 @@
     <Description>VoidTidy — Windows 11 悬浮快捷收纳启动栏</Description>
     <Company>caocname</Company>
     <Copyright>Copyright © caocname</Copyright>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
     <!-- net48 是 workstation+并发 GC 默认,不需要在 csproj 里再设服务端 GC。 -->
   </PropertyGroup>
 
