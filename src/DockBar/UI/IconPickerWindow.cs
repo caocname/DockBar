@@ -199,7 +199,7 @@ internal sealed class IconPickerWindow : Window
         {
             list.Children.Add(new TextBlock
             {
-                Text = "绑定文件夹里还没有任何 .lnk / .exe。\n把快捷方式或可执行文件放进去再回来。",
+                Text = "绑定文件夹里还没有任何 .lnk / .exe / .url / .website / .appref-ms。\n把快捷方式或可执行文件放进去再回来。",
                 Foreground = fgDim,
                 Margin = new Thickness(8, 16, 0, 0),
                 TextWrapping = TextWrapping.Wrap,

@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 namespace DockBar.Native;
 
 /// <summary>
-/// 从 .lnk / .exe 提取高分屏可用的图标(48px / 256px)。
+/// 从 .lnk / .exe / .url / .website / .appref-ms 提取高分屏可用的图标(48px / 256px)。
 /// 用 SHGetFileInfo + SHIL_JUMBO 取大尺寸 HICON,转 ImageSource 后释放。
 /// </summary>
 internal static class IconExtractor

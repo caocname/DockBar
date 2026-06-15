@@ -9,7 +9,7 @@ namespace DockBar.Services;
 public sealed record AppItem(string FullPath, string FileName, string DisplayName);
 
 /// <summary>
-/// 监听绑定文件夹,只识别 .lnk / .exe(需求 2.3.3 强制限制)。
+/// 监听绑定文件夹,识别可启动项:.lnk / .exe / .url / .website / .appref-ms。
 /// 用 FileSystemWatcher,变化合并去抖到 200ms,避免文件保存时连续触发刷新。
 /// </summary>
 internal sealed class FolderBinder : IDisposable
@@ -87,8 +87,11 @@ internal sealed class FolderBinder : IDisposable
     public static bool IsApp(string path)
     {
         var ext = Path.GetExtension(path);
-        return ext.Equals(".lnk", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".exe", StringComparison.OrdinalIgnoreCase);
+        return ext.Equals(".lnk",       StringComparison.OrdinalIgnoreCase)
+            || ext.Equals(".exe",       StringComparison.OrdinalIgnoreCase)
+            || ext.Equals(".url",       StringComparison.OrdinalIgnoreCase)  // Internet 快捷方式
+            || ext.Equals(".website",   StringComparison.OrdinalIgnoreCase)  // IE/Edge 固定网站
+            || ext.Equals(".appref-ms", StringComparison.OrdinalIgnoreCase); // ClickOnce 应用引用
     }
 
     public void Dispose()
