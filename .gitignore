@@ -21,12 +21,11 @@ out/
 .idea/
 *.swp
 
-# ---- DockBar 自身产物 ----
+# ---- VoidTidy 自身产物 ----
+# logo.png 留在仓库:tools/make-ico.ps1 从它生成 app.ico,新 clone 必备。
+# bin/ obj/ publish/ 已在上面屏蔽,产物本身不会进库。
 config.json
 *.lnk
-DockBar.exe
-DockBar.pdb
-logo.png
 
 # ---- OS ----
 Thumbs.db
