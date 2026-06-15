@@ -1,7 +1,7 @@
 <Window x:Class="DockBar.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="DockBar"
+        Title="VoidTidy"
         WindowStyle="None"
         ResizeMode="NoResize"
         ShowInTaskbar="False"

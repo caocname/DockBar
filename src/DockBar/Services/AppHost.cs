@@ -73,8 +73,8 @@ public sealed class AppHost : IDisposable
             _trigger.Dispatcher.BeginInvoke(() =>
             {
                 MessageBox.Show(
-                    "欢迎使用 DockBar!\n\n请右键托盘图标 → 设置,先指定一个收纳文件夹。",
-                    "DockBar", MessageBoxButton.OK, MessageBoxImage.Information);
+                    "欢迎使用 VoidTidy!\n\n请右键托盘图标 → 设置,先指定一个收纳文件夹。",
+                    "VoidTidy", MessageBoxButton.OK, MessageBoxImage.Information);
             }, DispatcherPriority.ApplicationIdle);
         }
     }
@@ -228,7 +228,7 @@ public sealed class AppHost : IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"启动失败:{ex.Message}", "DockBar",
+            MessageBox.Show($"启动失败:{ex.Message}", "VoidTidy",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }

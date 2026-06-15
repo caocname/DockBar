@@ -20,7 +20,7 @@ internal sealed class TrayIcon : IDisposable
         _ni = new NotifyIcon
         {
             Icon = LoadIcon(),
-            Text = "DockBar — 悬浮收纳",
+            Text = "VoidTidy — 悬浮收纳",
             Visible = true,
         };
         _ni.MouseDoubleClick += (_, _) => SettingsWindow.OpenOrFocus(_ctx);

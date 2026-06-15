@@ -53,7 +53,7 @@ public partial class SettingsWindow : Window
             try { SaveToConfig(); }
             catch (System.Exception ex)
             {
-                MessageBox.Show($"保存失败:{ex.Message}", "DockBar", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"保存失败:{ex.Message}", "VoidTidy", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             Close();

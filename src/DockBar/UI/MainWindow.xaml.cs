@@ -25,6 +25,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // 任务管理器"应用"分组 / Alt+Tab / 任务栏 都按窗口 Title 显示。
+        // 多实例时 App.DisplayName = "VoidTidy{N}",这里同步上去。
+        Title = App.DisplayName;
         SourceInitialized += OnSourceInitialized;
         MouseLeave += OnMouseLeave;
         MouseEnter += (_, _) => _hideTimer.Stop();
@@ -223,7 +226,7 @@ public partial class MainWindow : Window
         var cfg = AppHost.Current!.Config;
         if (string.IsNullOrEmpty(cfg.FolderPath) || !Directory.Exists(cfg.FolderPath))
         {
-            MessageBox.Show("请先在「设置」中绑定收纳文件夹。", "DockBar");
+            MessageBox.Show("请先在「设置」中绑定收纳文件夹。", "VoidTidy");
             return;
         }
         bool any = false;
